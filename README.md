@@ -1,5 +1,18 @@
 # dss-emailing
 
-To install all dependencies execute "dep ensure -v" \n
-To execute the program execute "go run receive.go" \n
+### Installing
+
+To install all dependencies execute 
+
+```
+"dep ensure -v"
+```
+
+### Run the program
+To run the program execute 
+```
+"go run receive.go" \n
+```
+
+### Emails
 All emails are savings at mail_log.txt
