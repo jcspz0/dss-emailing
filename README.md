@@ -11,7 +11,7 @@ To install all dependencies execute
 ### Run the program
 To run the program execute 
 ```
-"go run receive.go" \n
+"go run receive.go"
 ```
 
 ### Emails
