@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -22,6 +23,12 @@ type EmailDao struct {
 	Content string
 }
 
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	}
+}
+
 func main() {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
@@ -32,12 +39,12 @@ func main() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"MailRequest", // name
-		true,          // durable
-		false,         // delete when unused
-		false,         // exclusive
-		false,         // no-wait
-		nil,           // arguments
+		"rpc_Mail", // name
+		true,       // durable
+		false,      // delete when unused
+		false,      // exclusive
+		false,      // no-wait
+		nil,        // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -55,15 +62,27 @@ func main() {
 	go func() {
 		for d := range msgs {
 			//log.Printf("Received a message: %s", d.Body)
-			d.Ack(false)
+			d.Ack(true)
 			myEmail := FromGOB(d.Body)
 			//log.Printf("Received a message:", myEmail.Content)
-			sendit := SendMail(myEmail)
-			if sendit {
-				SendResponse("OK")
+			var sendit string
+			if SendMail(myEmail) {
+				sendit = "OK"
 			} else {
-				SendResponse("ERROR")
+				sendit = "ERROR"
 			}
+			fmt.Println("procesando la pericion: ", d.CorrelationId)
+			err = ch.Publish(
+				"",        // exchange
+				d.ReplyTo, // routing key
+				false,     // mandatory
+				false,     // immediate
+				amqp.Publishing{
+					ContentType:   "text/plain",
+					CorrelationId: d.CorrelationId,
+					Body:          []byte(sendit),
+				})
+			failOnError(err, "Failed to publish a message")
 
 		}
 	}()
